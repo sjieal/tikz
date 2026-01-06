@@ -1,12 +1,29 @@
 <script lang="ts">
-  export let tags: string[]
-  export let font_size = `9pt`
-  export let margin = `auto`
+  import type { HTMLAttributes } from 'svelte/elements'
+  import { filters } from './state.svelte'
+
+  let { tags = [], btn_props = {}, ...rest }: HTMLAttributes<HTMLParagraphElement> & {
+    tags: string[]
+    btn_props?: HTMLAttributes<HTMLButtonElement>
+  } = $props()
 </script>
 
-<p class="tags" style:margin>
-  {#each tags ?? [] as tag}
-    <small style:font-size={font_size}>{tag}</small>
+<p class="tags" {...rest}>
+  {#each tags as tag (tag)}
+    <button
+      onclick={(event) => {
+        event.preventDefault()
+        event.stopPropagation()
+        if (filters.tags.some((t) => t.label === tag)) {
+          filters.tags = filters.tags.filter((t) => t.label !== tag)
+        } else {
+          filters.tags = [...filters.tags, { label: tag, count: 0 }]
+        }
+      }}
+      {...btn_props}
+    >
+      {tag}
+    </button>
   {/each}
 </p>
 
@@ -16,11 +33,13 @@
     flex-wrap: wrap;
     place-content: center;
     gap: 4pt;
-    padding: 0;
+    margin: 1em;
   }
-  p.tags small {
-    background-color: rgba(255, 255, 255, 0.2);
-    padding: 0 4pt;
+  p.tags button {
+    background-color: var(--nav-bg);
+    font-size: smaller;
+    color: var(--text-secondary);
+    padding: 2pt 4pt;
     border-radius: 3pt;
   }
 </style>

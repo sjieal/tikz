@@ -1,15 +1,14 @@
 <script lang="ts">
-  import { dev } from '$app/environment'
-  import { Card, CodeBlock, Tags } from '$lib'
+  import { CodeBlock, type Diagram, DiagramCard, Tags } from '$lib'
   import { homepage, repository } from '$root/package.json'
   import Icon from '@iconify/svelte'
-  import { PrevNext } from 'svelte-zoo'
+  import { PrevNext } from 'svelte-multiselect'
 
-  export let data
-
-  $: ({ title, description, code, width, height } = data.fig)
-  $: ({ creator, creator_url, url, downloads, tags, slug } = data.fig)
-  $: link = `GitHub||${repository}/blob/main/assets/${slug}/${slug}.tex`
+  let { data } = $props()
+  let { title, description, code, images } = $derived(data.diagram)
+  let { creator, creator_url, url, downloads, tags, slug } = $derived(
+    data.diagram,
+  )
   const labels = [
     [`.png`, `PNG`],
     [`-hd.png`, `PNG (HD)`],
@@ -20,25 +19,26 @@
 
   // development server fetches files from local folder (specified by svelte.config.js kit.files.assets)
   // production server fetches files from GitHub (so we don't need to re-upload with every build)
-  const asset_uri = dev ? `` : `https://raw.githubusercontent.com/janosh/tikz/main/assets`
-  $: base_uri = `${asset_uri}/${slug}/${slug}`
-  $: hd_png = `${base_uri}-hd.png`
-  $: tex_file_uri = `${base_uri}.tex`
-  $: overleaf_href = `https://overleaf.com/docs?snip_uri=${tex_file_uri}`
+  const raw_repo_url =
+    `https://github.com/janosh/diagrams/raw/refs/heads/main/assets/`
+  let base_uri = $derived(`${raw_repo_url}/${slug}/${slug}`)
 
-  $: if (downloads.length < 2) throw `unexpectedly low number of assets for download`
-  $: head_title = `${title} | TikZ Diagrams`
-  $: plain_description = description?.replace(/<[^>]*>/g, ``)
+  $effect(() => {
+    if (downloads?.length < 2) {
+      throw `unexpectedly low number of assets for download`
+    }
+  })
+  let plain_description = $derived(description?.replace(/<[^>]*>/g, ``))
 </script>
 
 <svelte:head>
-  <title>{head_title}</title>
-  <meta property="og:title" content={head_title} />
+  <title>{title} | TikZ Diagrams</title>
+  <meta property="og:title" content="{title} | TikZ Diagrams" />
   {#if plain_description}
     <meta name="description" content={plain_description} />
     <meta property="og:description" content={plain_description} />
   {/if}
-  <meta property="og:image" content={hd_png} />
+  <meta property="og:image" content="{base_uri}-hd.png" />
   <meta property="og:image:alt" content={title} />
   <meta property="og:url" content="{homepage}/{slug}" />
   <meta name="twitter:card" content="summary" />
@@ -62,9 +62,8 @@
   </p>
 {/if}
 
-<section>
-  <h3>Tags</h3>
-  <Tags {tags} font_size="12pt" />
+<section class="description">
+  <Tags {tags} btn_props={{ style: `cursor: default` }} />
 
   {#if description}
     {@html description}
@@ -72,24 +71,20 @@
   {/if}
 </section>
 
-<img src={hd_png} alt={title} {width} {height} />
-
-<h2>
-  <Icon icon="octicon:link-external" inline />&nbsp; Edit
-</h2>
-<section>
-  <a href={overleaf_href} target="_blank" rel="noreferrer" class="large-link">
-    <img src="overleaf.svg" alt="Overleaf Logo" height="30" />&nbsp;Open in Overleaf
-  </a>
-</section>
+<enhanced:img src={images.hd} alt={title} class="diagram" />
 
 <h2>
   <Icon icon="octicon:download-16" inline />&nbsp; Download
 </h2>
 <section>
-  {#each labels as [ext, label]}
+  {#each labels as [ext, label] (ext)}
     {#if downloads?.some((filename) => filename.includes(ext))}
-      <a href="{base_uri}{ext}" target="_blank" rel="noreferrer" class="large-link">
+      <a
+        href="{base_uri}{ext}"
+        target="_blank"
+        rel="noreferrer"
+        class="large-link"
+      >
         {label}
       </a>
     {/if}
@@ -99,34 +94,52 @@
 <h2>
   <Icon icon="octicon:code" inline />&nbsp; Code
 </h2>
-<p>{code.split(`\n`).length} lines</p>
+{#if code.typst}
+  <CodeBlock
+    code={code.typst}
+    title="{slug}.typ"
+    repo_link="{repository}/blob/main/assets/{slug}/{slug}.typ"
+  />
+{/if}
+{#if code.tex}
+  <CodeBlock
+    code={code.tex}
+    title="{slug}.tex"
+    repo_link="{repository}/blob/main/assets/{slug}/{slug}.tex"
+    tex_file_uri="{base_uri}.tex"
+  />
+{/if}
 
-<CodeBlock {code} title="{slug}.tex" {link} />
 <PrevNext
-  items={data.figs.map((fig) => [fig.slug, fig])}
+  items={data.diagrams.map((diagram) => [diagram.slug, diagram])}
   current={data.slug}
-  style="max-width: 55em; margin: auto;"
-  let:item
-  let:kind
+  style="max-width: 50em; margin: auto"
 >
-  <div>
-    <h3>
-      <a href={item.slug}>
-        {@html kind == `next` ? `Next &rarr;` : `&larr; Previous`}
-      </a>
-    </h3>
-    <Card {item} style="max-width: 250px;" />
-  </div>
+  {#snippet children({ item, kind })}
+    {@const [slug, diagram] = item as [string, Diagram]}
+    <div>
+      <h3>
+        <a href={slug}>
+          {@html kind == `next` ? `Next &rarr;` : `&larr; Previous`}
+        </a>
+      </h3>
+      <DiagramCard
+        item={diagram}
+        style="max-width: 280px; font-size: 10pt"
+        format="short"
+      />
+    </div>
+  {/snippet}
 </PrevNext>
 
 <style>
   h1 {
-    font-size: 3em;
+    font-size: 2em;
   }
   :where(h1, h2) {
-    border-bottom: 2px solid orange;
+    border-bottom: 2px solid var(--link-hover);
     max-width: 12em;
-    margin: 2em auto 1em;
+    margin: 1em auto;
     padding-bottom: 8pt;
   }
   section {
@@ -135,27 +148,31 @@
     line-height: 3ex;
     text-align: center;
   }
-  img[width] {
-    background: #ffffff85;
+  section.description :global(ul) {
+    text-align: left;
+  }
+  .diagram {
+    background-color: light-dark(transparent, rgba(255, 255, 255, 0.3));
     padding: 1em;
     box-sizing: border-box;
     max-width: min(850px, 90vw);
     height: auto;
     max-height: 90vh;
-    margin: auto;
+    object-fit: scale-down;
+    margin: 2em auto;
     border-radius: 1ex;
     display: block;
   }
   a.large-link {
-    background: rgba(255, 255, 255, 0.1);
-    padding: 4pt 1ex;
+    background: var(--nav-bg);
+    padding: 0 7pt;
     border-radius: 4pt;
     margin: 2pt;
     transition: color 0.3s, background-color 0.3s;
     font-size: 16pt;
   }
   a.large-link:hover {
-    background: rgba(255, 255, 255, 0.2);
+    background: var(--card-bg);
   }
   a.large-link[target='_blank'] {
     display: inline-flex;

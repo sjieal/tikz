@@ -8,12 +8,17 @@ export default {
   kit: {
     adapter: adapter(),
 
+    prerender: {
+      handleHttpError: `warn`,
+    },
+
     files: {
       assets: `../assets`,
     },
 
     alias: {
       $root: `.`,
+      $assets: `../assets`,
     },
   },
 }

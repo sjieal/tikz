@@ -1,38 +1,69 @@
 <script lang="ts">
-  import Icon from '@iconify/svelte'
-  import hljs from 'highlight.js/lib/core'
-  import latex from 'highlight.js/lib/languages/latex'
-  import 'highlight.js/styles/vs2015.css'
-  import { CopyButton } from 'svelte-zoo'
+  import Iconify from '@iconify/svelte'
+  import { createStarryNight } from '@wooorm/starry-night'
+  import grammar_typst from '@wooorm/starry-night/source.typst'
+  import grammar_latex from '@wooorm/starry-night/text.tex.latex'
+  import { toHtml } from 'hast-util-to-html'
+  import { CopyButton, Icon } from 'svelte-multiselect'
+  import type { HTMLAttributes } from 'svelte/elements'
 
-  hljs.registerLanguage(`latex`, latex)
+  let { code, repo_link, title, tex_file_uri = ``, ...rest }: {
+    code: string
+    repo_link: string
+    title: string
+    tex_file_uri?: string
+  } & HTMLAttributes<HTMLDivElement> = $props()
 
-  export let code: string
-  export let link: string
-  export let title: string
+  let ext = $derived(title?.split(`.`).pop() as `typ` | `tex`)
+  const icon = $derived({ typ: `simple-icons:typst`, tex: `file-icons:latex` }[ext])
 
-  let [linkTitle, url] = (link ?? ``).split(`||`, 2)
+  const scope_map = { typ: `source.typst`, tex: `text.tex.latex` } as const
+
+  // Initialize starry-night once at module scope (shared across all component instances)
+  const starry_night = createStarryNight([grammar_latex, grammar_typst])
+
+  let highlighted_code = $state(``)
+
+  $effect(() => {
+    const scope = scope_map[ext] || `text.tex.latex`
+    starry_night.then((sn) => {
+      highlighted_code = toHtml(sn.highlight(code, scope))
+    })
+  })
 </script>
 
-<div>
+<div {...rest}>
   {#if title}
-    <h3>{title}</h3>
+    <h3>
+      <Iconify {icon} inline />&nbsp;
+      {title} <small>({code.split(`\n`).length} lines)</small>
+    </h3>
   {/if}
   <aside>
-    {#if link}<a href={url}>
+    {#if repo_link}
+      <a href={repo_link} target="_blank" rel="noreferrer noopener">
         <button>
-          <Icon icon="octicon:mark-github" inline />
-          {linkTitle}
+          <Icon icon="GitHub" />
         </button>
-      </a>{/if}
+      </a>
+    {/if}
+    <!-- https://github.com/typst/webapp-issues/issues/516 tracks Typst web app API for opening code files -->
+    {#if tex_file_uri}
+      {@const href = `https://overleaf.com/docs?snip_uri=${tex_file_uri}`}
+      <a {href} target="_blank" rel="noreferrer noopener">
+        <button>
+          <img src="overleaf.svg" alt="Overleaf Logo" height="16" />
+        </button>
+      </a>
+    {/if}
     <CopyButton content={code} />
   </aside>
-  <pre><code>{@html hljs.highlight(code, { language: `latex` }).value}</code></pre>
+  <pre><code>{@html highlighted_code}</code></pre>
 </div>
 
 <style>
   div {
-    max-width: 55em;
+    max-width: 50em;
     margin: 3em auto;
     position: relative;
   }
@@ -40,22 +71,34 @@
     position: absolute;
     bottom: calc(100% - 1em);
     left: 1em;
-    background: teal;
-    padding: 2pt 8pt;
+    background: var(--button-bg);
+    padding: 0 8pt;
     border-radius: 3pt 3pt 0 0;
+    font-size: medium;
+  }
+  h3 small {
+    font-weight: 200;
+    padding-left: 6pt;
   }
   aside {
     position: absolute;
     top: 1em;
     right: 1em;
     display: flex;
-    gap: 1em;
+    gap: 1ex;
+  }
+  aside a button {
+    height: 100%;
   }
   pre {
     padding: 1em;
-    background: rgba(255, 255, 255, 0.2);
+    background: var(--pre-bg);
     overflow-x: scroll;
-    font-size: 1.2em;
     border-radius: 3pt;
+  }
+  button {
+    display: inline-flex;
+    gap: 3pt;
+    place-items: center;
   }
 </style>

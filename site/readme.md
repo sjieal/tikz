@@ -2,17 +2,17 @@
   <img src="../assets/favicon.svg" alt="TikZ" height=150>
 </p>
 
-# Random TikZ Collection
+# Scientific Diagram Collection
 
-Source code for gallery site of `standalone` TikZ figures. Built with [SvelteKit](https://kit.svelte.dev).
+Source code for gallery of CeTZ (Typst) and TikZ (LaTeX) diagrams. Built with [SvelteKit](https://kit.svelte.dev).
 
 ## Running this site locally
 
 1. Clone this repo and install dependencies:
 
    ```sh
-   git clone https://github.com/janosh/tikz
-   cd tikz/site
+   git clone https://github.com/janosh/diagrams
+   cd diagrams/site
    npm install
    ```
 

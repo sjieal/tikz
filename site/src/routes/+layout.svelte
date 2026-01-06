@@ -1,29 +1,39 @@
 <script lang="ts">
   import { goto } from '$app/navigation'
-  import figs from '$lib/tikz-figures.json'
+  import { diagrams } from '$lib'
+  import ThemeToggle from '$lib/ThemeToggle.svelte'
   import { repository } from '$root/package.json'
   import Icon from '@iconify/svelte'
-  import { CmdPalette } from 'svelte-multiselect'
-  import { GitHubCorner } from 'svelte-zoo'
+  import type { Snippet } from 'svelte'
+  import { CmdPalette, GitHubCorner } from 'svelte-multiselect'
   import '../app.css'
 
-  const actions = figs.map(({ title, slug }) => {
-    return { label: title, action: () => goto(slug) }
-  })
+  let { children }: { children?: Snippet<[]> } = $props()
+
+  let actions = $derived(
+    diagrams.map(({ title, slug }) => {
+      return { label: title, action: () => goto(slug) }
+    }),
+  )
 </script>
+
+<ThemeToggle />
 
 <CmdPalette {actions} placeholder="Go to..." />
 
 <GitHubCorner
   href={repository}
-  --zoo-github-corner-bg="var(--text-color)"
-  --zoo-github-corner-color="var(--body-bg)"
+  --gh-corner-bg="var(--text-color)"
+  --gh-corner-color="var(--page-bg)"
 />
 
-<slot />
+{@render children?.()}
 
-<footer style="margin: 6em 0 3em;">
+<footer style="margin: 6em 0 3em">
   &copy; Janosh Riebesell 2021 &ensp;-&ensp;
   <Icon icon="octicon:law" inline />
   <a href="{repository}/blob/main/license">MIT License</a>
+  &ensp;-&ensp;
+  <Icon icon="octicon:quote" inline />
+  <a href="{repository}/#--how-to-cite">How to cite</a>
 </footer>
